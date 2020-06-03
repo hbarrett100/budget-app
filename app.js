@@ -1,8 +1,64 @@
 // budget controller
 var budgetController = (function() {
 
-    // some code
-    
+    //function constructors for expense and income
+    var Expense = function(id, description, value) {
+        this.id = id;
+        this.description = description;
+        this.value = value;
+    };
+
+    var Income = function(id, description, value) {
+        this.id = id;
+        this.description = description;
+        this.value = value;
+    };
+
+    // store expenses and incomes into object
+    var data = {
+        allItems: {
+            exp: [],
+            inc: []
+        },
+        totals: {
+            exp: 0,
+            inc: 0
+        }
+    };
+
+    // return public method
+    return {
+        addItem: function(type, desc, val) {
+            var newItem, ID;
+
+            // create new id. want ID = last ID + 1
+            if (data.allItems[type].length > 0) {
+                ID = data.allItems[type][data.allItems[type].length -1].id + 1;
+            } else {
+                ID = 0;
+            }
+            
+
+            // create new item based on 'inc' or 'exp' type
+            if (type === 'exp') {
+                newItem = new Expense(ID, desc, val);
+            } else if (type === 'inc') {
+                newItem = new Income(ID, desc, val);
+            }
+
+            // push it into our data structure
+            data.allItems[type].push(newItem);
+
+            // return new element
+            return newItem;
+            },
+
+            //testing method
+            testing: function() {
+                console.log(data);
+            }
+            
+        };
 
 })();
 
@@ -43,16 +99,33 @@ var budgetController = (function() {
  // Controller 
  var controller = (function(budgetCtrl, UICtrl) {
 
-    // get access to dom strings
-    var DOM = UICtrl.getDOMstrings;
+    // function for all event listeners
+    var setupEventListeners = function() {
+
+        // get access to dom strings
+        var DOM = UICtrl.getDOMstrings();
+
+        document.querySelector(DOM.inputBtn).addEventListener('click', ctrlAddItem);
+        // key press event for when user hits return key
+        document.addEventListener('keypress', function(event) {
+            
+            if (event.keyCode === 13) {
+                ctrlAddItem();
+            }
+    
+        });
+    };
+
+
 
     var ctrlAddItem = function() {
-        
+        var input, newItem;
+
         // 1. get the field input data
-        var input = UICtrl.getinput();
-        console.log(input);
+        input = UICtrl.getinput();
 
         // 2. add item to the budget controller
+        newItem = budgetCtrl.addItem(input.type, input.description, input.value);
 
         // 3. add the item to the UI
 
@@ -61,18 +134,17 @@ var budgetController = (function() {
         // 5. display the budget
 
         
+    };
+
+    return {
+        init: function() {
+            console.log('app has started');
+            setupEventListeners();
+        }
     }
 
-    document.querySelector(DOM.inputBtn).addEventListener('click', ctrlAddItem);
-
-    // key press event for when user hits return key
-    // global
-    document.addEventListener('keypress', function(event) {
-        
-        if (event.keyCode === 13) {
-            ctrlAddItem();
-        }
-
-    });
 
  })(budgetController, UIController);
+
+ // call the init function to set things up at start of app
+ controller.init();
