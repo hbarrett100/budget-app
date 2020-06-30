@@ -64,6 +64,26 @@ var budgetController = (function () {
             return newItem;
         },
 
+
+        deleteItem: function(type, id) {
+            var ids, index;
+
+           // need to get index of id we want to delete from inc or exp array
+           // map () has access to current and returns a brand new array
+           ids = data.allItems[type].map(function(current){
+                return current.id; // would give an array of ids
+           });
+
+           index = ids.indexOf(id);
+
+           // only delete if id is found ie. if index is not -1
+           if (index !== -1) {
+                data.allItems[type].splice(index, 1); // first arg is where to start deleting, second arg is how many to delete
+           }
+
+
+        },
+
         calculateBudget: function () {
 
             // calculate total income and expenses
@@ -148,7 +168,7 @@ var UIController = (function () {
             } else if (type === 'exp') {
                 element = DOMstrings.expensesContainer;
 
-                html = '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+                html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             }
 
             // 2. replace the placeholder text with some actual data
@@ -160,6 +180,14 @@ var UIController = (function () {
             // 3. insert the HTML into the DOM using insert adjacent method
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
 
+
+        },
+
+        // can only remove a child element
+        deleteListItem: function(selectorID) {
+
+            var el = document.getElementById(selectorID)
+            el.parentNode.removeChild(el) //get parent node of element and then remove its child
 
         },
 
@@ -242,7 +270,7 @@ var controller = (function (budgetCtrl, UICtrl) {
 
         });
 
-        // add event listener for everytime someone clicks on container which holds all inc and exp
+        // add event listener for everytime someone clicks on container which holds all inc and exp - event delegation
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
     };
 
@@ -273,12 +301,28 @@ var controller = (function (budgetCtrl, UICtrl) {
 
     // callback function for event has access to event
     var ctrlDeleteItem = function(event) {
-        var itemID;
+        var itemID, splitID, type, ID;
 
         // DOM traversal from delete button up to it's parent div
         // not the best practise as the DOM is hard-coded in
         itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
 
+        if (itemID) {
+
+            // inc-1
+            splitID = itemID.split('-');
+            type = splitID[0];
+            ID = parseInt(splitID[1]); // this is now a string
+
+            // 1. delete item from the data structure
+            budgetCtrl.deleteItem(type, ID);
+
+            // 2. delete the item from the UI
+            UIController.deleteListItem(itemID);
+
+            // 3. update and show the new budget 
+            updateBudget();
+        }
     };
 
     // public method to set up event listeners
