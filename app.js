@@ -6,6 +6,21 @@ var budgetController = (function () {
         this.id = id;
         this.description = description;
         this.value = value;
+        this.percentage = -1;
+    };
+
+    // calculate percentage
+    Expense.prototype.calcPercentage = function (totalIncome) {
+        if (totalIncome > 0) {
+            this.percentage = Math.round((this.value / totalIncome) * 100);
+        } else {
+            this.percentage = -1;
+        }
+    };
+
+    // return percentage
+    Expense.prototype.getPercentage = function () {
+        return this.percentage;
     };
 
     var Income = function (id, description, value) {
@@ -65,21 +80,21 @@ var budgetController = (function () {
         },
 
 
-        deleteItem: function(type, id) {
+        deleteItem: function (type, id) {
             var ids, index;
 
-           // need to get index of id we want to delete from inc or exp array
-           // map () has access to current and returns a brand new array
-           ids = data.allItems[type].map(function(current){
+            // need to get index of id we want to delete from inc or exp array
+            // map () has access to current and returns a brand new array
+            ids = data.allItems[type].map(function (current) {
                 return current.id; // would give an array of ids
-           });
+            });
 
-           index = ids.indexOf(id);
+            index = ids.indexOf(id);
 
-           // only delete if id is found ie. if index is not -1
-           if (index !== -1) {
+            // only delete if id is found ie. if index is not -1
+            if (index !== -1) {
                 data.allItems[type].splice(index, 1); // first arg is where to start deleting, second arg is how many to delete
-           }
+            }
 
 
         },
@@ -104,6 +119,21 @@ var budgetController = (function () {
 
 
         },
+
+        calculatePercentages: function () {
+            data.allItems.exp.forEach(function (cur) {
+                cur.calcPercentage(data.totals.inc);
+            });
+        },
+
+
+        getPercentages: function () {
+            var allPerc = data.allItems.exp.map(function (cur) {
+                return cur.getPercentage(); //return value of current element to allPerc var
+            });
+            return allPerc; // all perc contains all percentages
+        },
+
 
         getBudget: function () {
             // use object as returning 4 things at a time
@@ -140,14 +170,15 @@ var UIController = (function () {
         incomeLabel: '.budget__income--value',
         expenseLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        expensesPercLabel: '.item__percentage',
     }
 
 
 
     // returns public method which we can access
     return {
-         // return object
+        // return object
         getinput: function () {
             return {
                 type: document.querySelector(DOMstrings.inputType).value, // will be either inc or exp
@@ -184,7 +215,7 @@ var UIController = (function () {
         },
 
         // can only remove a child element
-        deleteListItem: function(selectorID) {
+        deleteListItem: function (selectorID) {
 
             var el = document.getElementById(selectorID)
             el.parentNode.removeChild(el) //get parent node of element and then remove its child
@@ -227,6 +258,28 @@ var UIController = (function () {
 
         },
 
+        // percentages is an array of all percentages
+        displayPercentages: function (percentages) {
+            var fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
+
+            var nodeListForEach = function (list, callback) {
+                for (var i = 0; i < list.length; i++) {
+                    callback(list[i], i); // pass current and index into callback
+                }
+            };
+
+            // this is the callback function
+            nodeListForEach(fields, function (current, index) {
+
+                if (percentages[index] > 0) {
+                    current.textContent = percentages[index] + '%';
+                } else {
+                    current.textContent = percentages[index] + '---'
+                }
+
+            });
+        },
+
         // public method
         getDOMstrings: function () {
             return DOMstrings;
@@ -235,20 +288,6 @@ var UIController = (function () {
 
 
 })();
-
-var updateBudget = function () {
-
-    // 1. calculate the budget
-    budgetController.calculateBudget();
-
-    // 2. return the budget
-    var budget = budgetController.getBudget();
-
-    // 3. display the budget
-    UIController.displayBudget(budget);
-
-}
-
 
 // Controller 
 var controller = (function (budgetCtrl, UICtrl) {
@@ -274,6 +313,31 @@ var controller = (function (budgetCtrl, UICtrl) {
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
     };
 
+    var updateBudget = function () {
+
+        // 1. calculate the budget
+        budgetController.calculateBudget();
+
+        // 2. return the budget
+        var budget = budgetController.getBudget();
+
+        // 3. display the budget
+        UIController.displayBudget(budget);
+
+    }
+
+    var updatePercentages = function () {
+
+        // 1. calculate percentages
+        budgetController.calculatePercentages();
+
+        // 2. read percetages from budget controller
+        var percentages = budgetController.getPercentages();
+
+        // 3. update user interface with new percentages
+        UIController.displayPercentages(percentages);
+    };
+
     // this is controller of app - tells other functions what to do and receives data back which we store in vars
     var ctrlAddItem = function () {
         var input, newItem;
@@ -295,12 +359,15 @@ var controller = (function (budgetCtrl, UICtrl) {
 
             // 5. calculate and update budget
             updateBudget();
+
+            // 6. calculate and update percentages
+            updatePercentages();
         }
 
     };
 
     // callback function for event has access to event
-    var ctrlDeleteItem = function(event) {
+    var ctrlDeleteItem = function (event) {
         var itemID, splitID, type, ID;
 
         // DOM traversal from delete button up to it's parent div
@@ -322,6 +389,9 @@ var controller = (function (budgetCtrl, UICtrl) {
 
             // 3. update and show the new budget 
             updateBudget();
+
+            // 4. calculate and update percentages
+            updatePercentages();
         }
     };
 
